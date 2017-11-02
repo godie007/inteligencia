@@ -1,11 +1,141 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title><%= title %></title>
-    <link rel='stylesheet' href='/stylesheets/style.css' />
-  </head>
-  <body>
-    <h1><%= title %></h1>
-    <p>Welcome to <%= title %></p>
-  </body>
+    <head>
+        <title><%= title %></title>
+        <script type="text/javascript" src="js/d3.js"></script>
+        <script type="text/javascript" src="js/d3.layout.js"></script>
+        <link rel="stylesheet" href="css/style.css"/>
+    </head>
+    <body>
+ 
+        <div id="viz"></div>
+ 
+        <script type="text/javascript">
+ 
+            var entrada = [
+                {"_id":1,"name":"root","ask":"¿es un animal domestico?"},
+                {"_id":2,"name":"","ask":"comida","parentN":{"_id":1}},
+                {"_id":3,"name":"","ask":"bebida","parentN":{"_id":1}},
+
+                {"_id":4,"name":"B","ask":"pescado","parentN":{"_id":2,}},
+                {"_id":5,"name":"B","ask":"carne","parentN":{"_id":2,}},
+                {"_id":6,"name":"B","ask":"pasta","parentN":{"_id":2,}},
+                {"_id":7,"name":"C","ask":"verdura","parentN":{"_id":2,}},
+
+                {"_id":8,"name":"C","ask":"licores","parentN":{"_id":3,}},
+                {"_id":9,"name":"C","ask":"gaseosas","parentN":{"_id":3,}},
+                {"_id":10,"name":"C","ask":"jugos","parentN":{"_id":3,}},
+
+                {"_id":11,"name":"C","ask":"vinos","parentN":{"_id":8,}},
+                {"_id":12,"name":"C","ask":"cerveza","parentN":{"_id":8,}},
+                {"_id":13,"name":"C","ask":"wiski","parentN":{"_id":8,}},
+
+                {"_id":14,"name":"C","ask":"club colombia","parentN":{"_id":11,}},
+                {"_id":15,"name":"C","ask":"aguila","parentN":{"_id":11,}},
+                {"_id":16,"name":"C","ask":"poker","parentN":{"_id":11,}},
+
+                
+            ];
+            var data = Object.assign([], entrada);
+            var idToNodeMap = {};
+            var treeData = null;
+            for(var i = 0; i < data.length; i++) {
+                var datum = data[i];
+                datum.children = [];
+                idToNodeMap[datum._id] = datum;
+                
+                if(typeof datum.parentN === "undefined") {
+                    treeData = datum;        
+                } else {
+                    parentNode = idToNodeMap[datum.parentN._id];
+                    parentNode.children.push(datum);
+                }
+            }
+
+            // Create a svg canvas
+            var vis = d3.select("#viz").append("svg:svg")
+            .attr("width", '100%')
+            .attr("height", '800px')
+            .append("svg:g")
+            .attr("transform", "translate(600, 400)");
+ 
+            // Create a cluster "canvas"
+            var cluster = d3.layout.cluster()
+            .size([300,150]);
+ 
+            var diagonal = d3.svg.diagonal.radial()
+            .projection(function(d) { return [d.y, d.x / 180 * Math.PI]; });
+            
+            var nodes = cluster.nodes(treeData);
+            var links = cluster.links(nodes);
+            // Define the div for the tooltip
+            var div = d3.select("body").append("div")	
+                .attr("class", "tooltip")				
+                .style("opacity", 0);
+
+            var link = vis.selectAll("pathlink")
+            .data(links)
+            .enter().append("svg:path")
+            .attr("class", "link")
+            .attr("d", diagonal)
+ 
+            var node = vis.selectAll("g.node")
+            .data(nodes)
+            .enter().append("svg:g")
+            .attr("id", function(d, i) { return ("point" + d._id)})
+            .style("fill", "white")
+            .style("stroke","black")
+            .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; })
+            .on("mouseover", function(d){
+                if(d.ask){
+                div.transition()		
+                .duration(200)		
+                .style("opacity", .9);	
+                
+                div.html(d.ask)	
+                .style("left", (d3.event.pageX) + "px")		
+                .style("top", (d3.event.pageY - 28) + "px");	
+                }
+                d3.selectAll("g").style("fill", "white")
+
+                var dataCurrent = entrada.forEach(function(res){
+                  if(res.parentN && res.parentN._id === d._id) {
+                    d3.select("#point"+res._id).style("fill", "yellow");
+                  }
+                });
+
+                trazarRuta(d._id);
+            }).on("mouseout", function(d) {		
+                div.transition()		
+                .duration(500)		
+                .style("opacity", 0);	
+            });
+            // Add the dot at every node
+            node.append("svg:circle")
+            .attr("r", 4.5);
+ 
+            node.append("svg:text")
+            .attr("dx", function(d) { return d.x < 180 ? 8 : -8; })
+            .attr("dy", ".31em")
+            .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
+            .attr("transform", function(d) { return d.x < 180 ? null : "rotate(180)"; })
+            .text(function(d) { return d.name; });
+
+            function trazarRuta(id) {
+                var dataCurrent = entrada.reduce(function(acc,res){
+                  if(res._id === id) acc = res
+                  return acc
+                },{})
+                if (!dataCurrent._id) return
+                
+                d3.select("#point"+dataCurrent._id).style("fill", "red");
+                d3.select("#point1").style("fill", "blue");
+
+                if(typeof dataCurrent.parentN === "undefined") return
+                return trazarRuta(dataCurrent.parentN._id);
+            }
+
+
+        </script>
+    </body>
 </html>
